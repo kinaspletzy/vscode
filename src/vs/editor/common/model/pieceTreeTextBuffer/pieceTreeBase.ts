@@ -204,66 +204,99 @@ interface CacheEntry {
 	nodeStartLineNumber?: number;
 }
 
+/**
+ * A cache for searching nodes in a piece tree.
+ */
 class PieceTreeSearchCache {
-	private readonly _limit: number;
-	private _cache: CacheEntry[];
+  /**
+   * The maximum number of entries that can be stored in the cache.
+   */
+  private readonly _limit: number;
 
-	constructor(limit: number) {
-		this._limit = limit;
-		this._cache = [];
-	}
+  /**
+   * The cache entries.
+   */
+  private _cache: CacheEntry[];
 
-	public get(offset: number): CacheEntry | null {
-		for (let i = this._cache.length - 1; i >= 0; i--) {
-			const nodePos = this._cache[i];
-			if (nodePos.nodeStartOffset <= offset && nodePos.nodeStartOffset + nodePos.node.piece.length >= offset) {
-				return nodePos;
-			}
-		}
-		return null;
-	}
+  /**
+   * Creates a new instance of PieceTreeSearchCache.
+   * @param limit The maximum number of entries that can be stored in the cache.
+   */
+  constructor(limit: number) {
+    this._limit = limit;
+    this._cache = [];
+  }
 
-	public get2(lineNumber: number): { node: TreeNode; nodeStartOffset: number; nodeStartLineNumber: number } | null {
-		for (let i = this._cache.length - 1; i >= 0; i--) {
-			const nodePos = this._cache[i];
-			if (nodePos.nodeStartLineNumber && nodePos.nodeStartLineNumber < lineNumber && nodePos.nodeStartLineNumber + nodePos.node.piece.lineFeedCnt >= lineNumber) {
-				return <{ node: TreeNode; nodeStartOffset: number; nodeStartLineNumber: number }>nodePos;
-			}
-		}
-		return null;
-	}
+  /**
+   * Gets the cache entry that contains the given offset.
+   * @param offset The offset to search for.
+   * @returns The cache entry that contains the given offset, or null if not found.
+   */
+  public get(offset: number): CacheEntry | null {
+    for (let i = this._cache.length - 1; i >= 0; i--) {
+      const nodePos = this._cache[i];
+      if (nodePos.nodeStartOffset <= offset && nodePos.nodeStartOffset + nodePos.node.piece.length >= offset) {
+        return nodePos;
+      }
+    }
+    return null;
+  }
 
-	public set(nodePosition: CacheEntry) {
-		if (this._cache.length >= this._limit) {
-			this._cache.shift();
-		}
-		this._cache.push(nodePosition);
-	}
+  /**
+   * Gets the cache entry that contains the given line number.
+   * @param lineNumber The line number to search for.
+   * @returns The cache entry that contains the given line number, or null if not found.
+   */
+  public get2(lineNumber: number): { node: TreeNode; nodeStartOffset: number; nodeStartLineNumber: number } | null {
+    for (let i = this._cache.length - 1; i >= 0; i--) {
+      const nodePos = this._cache[i];
+      if (nodePos.nodeStartLineNumber && nodePos.nodeStartLineNumber < lineNumber && nodePos.nodeStartLineNumber + nodePos.node.piece.lineFeedCnt >= lineNumber) {
+        return <{ node: TreeNode; nodeStartOffset: number; nodeStartLineNumber: number }>nodePos;
+      }
+    }
+    return null;
+  }
 
-	public validate(offset: number) {
-		let hasInvalidVal = false;
-		const tmp: Array<CacheEntry | null> = this._cache;
-		for (let i = 0; i < tmp.length; i++) {
-			const nodePos = tmp[i]!;
-			if (nodePos.node.parent === null || nodePos.nodeStartOffset >= offset) {
-				tmp[i] = null;
-				hasInvalidVal = true;
-				continue;
-			}
-		}
+  /**
+   * Adds a cache entry to the cache.
+   * @param nodePosition The cache entry to add.
+   */
+  public set(nodePosition: CacheEntry) {
+    if (this._cache.length >= this._limit) {
+      this._cache.shift();
+    }
+    this._cache.push(nodePosition);
+  }
 
-		if (hasInvalidVal) {
-			const newArr: CacheEntry[] = [];
-			for (const entry of tmp) {
-				if (entry !== null) {
-					newArr.push(entry);
-				}
-			}
+  /**
+   * Removes invalid cache entries.
+   * @param offset The offset to validate against.
+   */
+  public validate(offset: number) {
+    let hasInvalidVal = false;
+    const tmp: Array<CacheEntry | null> = this._cache;
+    for (let i = 0; i < tmp.length; i++) {
+      const nodePos = tmp[i]!;
+      if (nodePos.node.parent === null || nodePos.nodeStartOffset >= offset) {
+        tmp[i] = null;
+        hasInvalidVal = true;
+        continue;
+      }
+    }
 
-			this._cache = newArr;
-		}
-	}
+    if (hasInvalidVal) {
+      const newArr: CacheEntry[] = [];
+      for (const entry of tmp) {
+        if (entry !== null) {
+          newArr.push(entry);
+        }
+      }
+
+      this._cache = newArr;
+    }
+  }
 }
+
 
 export class PieceTreeBase {
 	root!: TreeNode;
